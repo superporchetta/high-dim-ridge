@@ -8,6 +8,14 @@ from numba import njit
 MAX_ITER_MINIMIZE = 10000
 GTOL_MINIMIZE = 1e-6
 
+@njit(error_model="numpy", fastmath=True)
+def find_coefficients_L2(ys, xs, reg_param):
+    _, d = xs.shape
+    a = np.divide(xs.T.dot(xs), d) + reg_param * np.identity(d)
+    b = np.divide(xs.T.dot(ys), np.sqrt(d))
+    return np.linalg.solve(a, b)
+
+
 # @njit(error_model="numpy")
 def _loss_and_gradient_Huber(w, xs_norm, ys, reg_param, a):
     linear_loss = ys - xs_norm @ w
@@ -44,8 +52,12 @@ def find_coefficients_Huber(ys, xs, reg_param, a, inital_guess=None, max_iter=MA
     if inital_guess is None:
         w = np.random.normal(loc=0.0, scale=1.0, size=(d,))
     else:
+        assert(inital_guess.shape[0] == d)
         w = inital_guess
-    xs_norm = np.divide(xs, np.sqrt(d))
+
+    # xs_norm = np.hstack((np.ones(xs.shape[0])[:,None], xs))
+    xs_norm = xs
+    # xs_norm = np.divide(xs, np.sqrt(d))
 
     bounds = np.tile([-np.inf, np.inf], (w.shape[0], 1))
     bounds[-1][0] = np.finfo(np.float64).eps * 10
